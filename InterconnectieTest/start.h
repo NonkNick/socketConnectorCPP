@@ -7,11 +7,7 @@
 #include <fcntl.h>
 #include <fstream>
 #include <chrono>
+#include "socketConnector.h"
+#include "randomValues.h"
 
-class socketConnector {
-
-
-    public:
-    void setup();
-};
 

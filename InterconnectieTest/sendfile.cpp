@@ -107,6 +107,37 @@ int readStringFromPipe(char *buffer, int fd) {
     return nrOfBytesToRead;
 }//readStringFromPipe
 
+unsigned long int writeFileToPipe(int fd, const char *path) {
+    char hexlen[PREFIX_LENGTH+1];
+    char buffer[FILE_BUFFER_SIZE];
+
+    // create the streamreader, indicate binary (byte-for-byte reading)
+    std::ifstream infile(path, std::ifstream::binary);
+
+    //get length of file (seek to end, then back to begin
+    infile.seekg(0, std::ios::end);
+    size_t length = infile.tellg();
+    infile.seekg(0, std::ios::beg);
+
+    // write the length of the file in HEX to the pipe
+    createLengthIndicator(hexlen, ( unsigned int) length);
+    write (fd, hexlen, PREFIX_LENGTH  );
+
+    // read the file
+    while (!infile.eof()){
+        // read from the file, maximum size of the buffer
+        infile.read(buffer, sizeof(buffer));
+
+        // determine how many bytes were read
+        int bytesRead = infile.gcount();
+
+        // write the file to the pipe.
+        write(fd, buffer, bytesRead);
+    }
+
+    return (unsigned long int ) length;
+}//writeFileToPipe
+
 /**
  * Repeatedly sends a file through a PIPE (see mkfifo), followed by an instruction and waits for an answer
  * measured transfer times: 1.9GB in 2945mshtop (1853882368 / 2945 = 629501 bytes/ms (@buffer size = 2048 bytes)
@@ -147,10 +178,10 @@ int main() {
         MyGreppelState.dc2 = dc2;
         MyGreppelState.dc3 = dc3;
         MyGreppelState.dc4 = dc4;
-        std::cout << "Sending finished in " << MyGreppelState.dc1 << "ms" << std::endl;
-        std::cout << "Sending finished in " << MyGreppelState.dc2 << "ms" << std::endl;
-        std::cout << "Sending finished in " << MyGreppelState.dc3 << "ms" << std::endl;
-        std::cout << "Sending finished in " << MyGreppelState.dc4 << "ms" << std::endl;
+//        std::cout << "Sending finished in " << MyGreppelState.dc1 << "ms" << std::endl;
+//        std::cout << "Sending finished in " << MyGreppelState.dc2 << "ms" << std::endl;
+//        std::cout << "Sending finished in " << MyGreppelState.dc3 << "ms" << std::endl;
+//        std::cout << "Sending finished in " << MyGreppelState.dc4 << "ms" << std::endl;
 
         writeStringToPipe(fd_write, MyGreppelState.dc1);
         writeStringToPipe(fd_write, MyGreppelState.dc2);
