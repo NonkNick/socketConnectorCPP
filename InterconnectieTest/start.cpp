@@ -1,20 +1,18 @@
 #include "start.h"
-
+telemetrics* telemetrics::instance = 0;
 int main() {
-    std::cout << "voor sc en rv" << std::endl;
+    std::cout << "in main" << std::endl;
 
-    socketConnector sc;
-    std::cout << "na sc en voor rv" << std::endl;
-
-    randomValues rv(sc);
-    std::cout << "na sc en rv" << std::endl;
+    telemetrics* t = telemetrics::getInstance();
+    randomValues rv;
+    telemetryPipe tPipe;
 
 
     while(true) {
         rv.generate();
-//        sc.printDCS();
-        sc.sendState();
-//        std::cout << "dsfbhjksdfjkdsajknfas" << std::endl;
+        tPipe.printDCS();
+        tPipe.sendState();
+//        sleep();
     }
 
     return 0;

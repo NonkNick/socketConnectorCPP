@@ -6,32 +6,22 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "json_struct.h"
+#include "telemetrics.h"
 #include <fstream>
 #include <chrono>
 
-class socketConnector {
+class telemetryPipe {
 public:
-    static int dc1;
-    static int dc2;
-    static int dc3;
-    static int dc4;
-    socketConnector();
-    void printDCS();
-    void sendState();
-    void openPipe();
+    char *myfifo_write = "/tmp/greppel_out";
+    char *myfifo_read  = "/tmp/greppel_in";
 
-
-private:
-//    char *myfifo_write;
-//    char *myfifo_read;
-//    int fd_write;
-//    int fd_read;
-
-    char *myfifo_write;
-    char *myfifo_read;
 
     int fd_write;
     int fd_read;
+    telemetryPipe();
+    void sendState();
+    void printDCS();
+private:
 
     void createLengthIndicator(char *buffer, unsigned long int len);
     uint64_t getTimestamp();
@@ -39,6 +29,5 @@ private:
     unsigned long int readLengthIndicatorFromPipe(int fd);
     int readStringFromPipe(char *buffer, int fd);
     unsigned long int writeFileToPipe(int fd, const char *path);
-
 };
 

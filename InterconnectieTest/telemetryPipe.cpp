@@ -1,19 +1,55 @@
-#include <iostream>
-#include <stdio.h>
-#include <unistd.h>
-#include <cstring>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <fstream>
-#include <chrono>
+#include "telemetryPipe.h"
+
 
 #define PREFIX_LENGTH 8
 #define FILE_BUFFER_SIZE 2048
 
-typedef struct _command {
-    const char* filename;
-    const char* processingInstruction;
-} command;
+/**
+ * Repeatedly sends a file through a PIPE (see mkfifo), followed by an instruction and waits for an answer
+ * measured transfer times: 1.9GB in 2945mshtop (1853882368 / 2945 = 629501 bytes/ms (@buffer size = 2048 bytes)
+ * @return
+ *
+ */
+
+telemetryPipe::telemetryPipe() {
+    mkfifo(myfifo_read, 0666);
+    mkfifo(myfifo_write, 0666);
+}
+
+void telemetryPipe:: sendState() {
+
+    int fd_write = open(myfifo_write, O_WRONLY);
+    int fd_read  = open(myfifo_read, O_RDONLY);
+
+
+    telemetrics* tel = telemetrics::getInstance();
+    std::string t_json = JS::serializeStruct((*tel).telemetry, JS::SerializerOptions(JS::SerializerOptions::Compact));
+    const char *t_json_char = t_json.c_str();
+    char hexlen[8 + 1];
+    size_t chars_read;
+    uint64_t start = getTimestamp();
+    writeStringToPipe(fd_write, t_json_char);
+    uint64_t ended = getTimestamp();
+    std::cout << "Sending finished in " << (ended - start) << "ms" << std::endl;
+
+    char answer[512];
+    readStringFromPipe(answer, fd_read);
+    std::cout << answer << std::endl;
+
+//    fflush(fd_write);
+//    fflush(fd_read);
+//
+//    fd_write = close(myfifo_write, 1);
+//    fd_read = close(myfifo_read, 1);
+
+}
+
+void telemetryPipe::printDCS() {
+    telemetrics* tel = telemetrics::getInstance();
+    std::string t_json = JS::serializeStruct((*tel).telemetry);
+    std::cout << t_json << std::endl;
+}
+
 
 /***
  * Create a string indicating the hexadecimal representation of the given parameter LEN
@@ -21,7 +57,7 @@ typedef struct _command {
  * It is advised to the the constant PREFIX_LENGTH+1
  * @param len the integer number to be converted.
  */
-void createLengthIndicator(char *buffer, unsigned long int len){
+void telemetryPipe::createLengthIndicator(char *buffer, unsigned long int len){
     char format[5];
     // setup the format using the constant
     sprintf(format, "%%0%dX", PREFIX_LENGTH);
@@ -34,7 +70,7 @@ void createLengthIndicator(char *buffer, unsigned long int len){
  * gets the current timestamp in milliseconds (UNIX style, since 1/1/1970 00:00:00)
  * @return the number of milleseconds
  */
-uint64_t getTimestamp() {
+uint64_t telemetryPipe::getTimestamp() {
     return std::chrono::duration_cast< std::chrono::milliseconds >(
             std::chrono::system_clock::now().time_since_epoch()
     ).count();
@@ -46,8 +82,8 @@ uint64_t getTimestamp() {
  * @param text the text to be written to the pipe
  * @return
  */
-unsigned long int writeStringToPipe (int fd, const char* text){
-    char hexlen[PREFIX_LENGTH + 1];
+unsigned long int telemetryPipe::writeStringToPipe (int fd, const char* text){
+    char hexlen[8 + 1];
     unsigned long int len = strlen(text);
 
     // first create the prefix in HEX-format: how many bytes will follow?
@@ -64,7 +100,7 @@ unsigned long int writeStringToPipe (int fd, const char* text){
  * @param path the absolute path to the file to be written
  * @return the number of bytes written
  */
-unsigned long int writeFileToPipe(int fd, const char *path) {
+unsigned long int telemetryPipe::writeFileToPipe(int fd, const char *path) {
     char hexlen[PREFIX_LENGTH+1];
     char buffer[FILE_BUFFER_SIZE];
 
@@ -100,13 +136,33 @@ unsigned long int writeFileToPipe(int fd, const char *path) {
  * @param fd the file descriptor of the pipe (see also mkfifo)
  * @return the number converted to an unsigned long int
  */
-unsigned long int readLengthIndicatorFromPipe(int fd){
+unsigned long int telemetryPipe::readLengthIndicatorFromPipe(int fd){
     char hexlen[PREFIX_LENGTH + 1];
 
     read(fd, hexlen, 8);
     hexlen[8]='\0';
+    std::cout << "hexlen " << hexlen << " -------------" << std::endl;
 
-    return std::stoi(hexlen, 0,  16);
+    try {
+        return std::stoi(hexlen, 0,  16);
+    }
+
+    catch (const std::invalid_argument& ia) {
+        std::cerr << "Invalid argument: " << ia.what() << std::endl;
+        std::cout << "-1 -------------" << std::endl;
+    }
+
+    catch (const std::out_of_range& oor) {
+        //std::cerr << "Out of Range error: " << oor.what() << std::endl;
+        std::cout << "-2 -------------" << std::endl;
+    }
+
+    catch (const std::exception& e)
+    {
+        //std::cerr << "Undefined error: " << e.what() << std::endl;
+        std::cout << "0 -------------" << std::endl;
+    }
+
 
 }//readLengthIndicatorFromPipe
 
@@ -116,7 +172,7 @@ unsigned long int readLengthIndicatorFromPipe(int fd){
  * @param fd the file descriptor of the pipe (see also mkfifo)
  * @return
  */
-int readStringFromPipe(char *buffer, int fd) {
+int telemetryPipe::readStringFromPipe(char *buffer, int fd) {
     int nrOfBytesToRead = readLengthIndicatorFromPipe(fd);
 
     read(fd, buffer, nrOfBytesToRead);
@@ -126,43 +182,3 @@ int readStringFromPipe(char *buffer, int fd) {
     return nrOfBytesToRead;
 }//readStringFromPipe
 
-/**
- * Repeatedly sends a file through a PIPE (see mkfifo), followed by an instruction and waits for an answer
- * measured transfer times: 1.9GB in 2945mshtop (1853882368 / 2945 = 629501 bytes/ms (@buffer size = 2048 bytes)
- * @return
- */
-int main() {
-    char *myfifo_write = "/tmp/martin_cpp_out";
-    char *myfifo_read  = "/tmp/martin_cpp_in";
-
-    mkfifo(myfifo_read, 0666);
-    mkfifo(myfifo_write, 0666);
-
-    int fd_write = open(myfifo_write, O_WRONLY);
-    int fd_read  = open(myfifo_read, O_RDONLY);
-
-    command MyCommand;
-    MyCommand.filename = "/home/martin/input.file";  // FIXME: Change filename according to current situation
-    MyCommand.processingInstruction = "copy";
-
-    long int i=0;
-    for (;;) {
-        char hexlen[8 + 1];
-        size_t chars_read;
-
-        uint64_t start = getTimestamp();
-
-        writeStringToPipe(fd_write, MyCommand.filename);
-        writeStringToPipe(fd_write, MyCommand.processingInstruction);
-        writeFileToPipe  (fd_write, MyCommand.filename);
-
-        uint64_t ended = getTimestamp();
-        std::cout << "Sending finished in " << (ended - start) << "ms" << std::endl;
-
-        char answer[512];
-        readStringFromPipe(answer, fd_read);
-
-        std::cout << answer << std::endl;
-    }
-
-}

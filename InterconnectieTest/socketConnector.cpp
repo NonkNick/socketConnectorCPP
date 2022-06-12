@@ -6,6 +6,10 @@ int socketConnector::dc1;
 int socketConnector::dc2;
 int socketConnector::dc3;
 int socketConnector::dc4;
+//char socketConnector::*myfifo_write;
+//char socketConnector::*myfifo_read;
+//int socketConnector::fd_write;
+//int socketConnector::fd_read;
 
 typedef struct _telemetry {
     int dc1;
@@ -16,57 +20,40 @@ typedef struct _telemetry {
     JS_OBJ(dc1, dc2, dc3, dc4);
 } telemetry;
 
+
 telemetry t;
+
 
 socketConnector::socketConnector() {
 
     std::cout << "in sc" << std::endl;
 
-    char *myfifo_write = "/tmp/greppel_out";
-    char *myfifo_read  = "/tmp/greppel_in";
-
-    mkfifo(myfifo_read, 0666);
-    mkfifo(myfifo_write, 0666);
-
-
-//
-//
-//        std::cout << " | dc1 " << dc1 << " | ";
-//        std::cout << "dc2 " << dc2 << " | ";
-//        std::cout << "dc3 " << dc3 << " | ";
-//        std::cout << "dc4 " << dc4 << " | " << std::endl;
-
-
-//    }
 }
 
 void socketConnector::sendState() {
-    int fd_write = open(myfifo_write, O_WRONLY);
-    int fd_read  = open(myfifo_read, O_RDONLY);
-    std::cout << "na fifo en fd" << std::endl;
-    while (true) {
-        char hexlen[8 + 1];
-        size_t chars_read;
+//    openPipe();
+    std::cout << "in sendstate" << std::endl;
+    char hexlen[8 + 1];
+    size_t chars_read;
 
-        uint64_t start = getTimestamp();
-        t.dc1 = dc1;
-        t.dc2 = dc2;
-        t.dc3 = dc3;
-        t.dc4 = dc4;
-        std::string t_json = JS::serializeStruct(t);
+    uint64_t start = getTimestamp();
+    t.dc1 = dc1;
+    t.dc2 = dc2;
+    t.dc3 = dc3;
+    t.dc4 = dc4;
+    std::string t_json = JS::serializeStruct(t);
 
-        const char *t_json_char = t_json.c_str();
-//      std::cout << t_json_char << std::endl;
+    const char *t_json_char = t_json.c_str();
+//  std::cout << t_json_char << std::endl;
 
-        writeStringToPipe(fd_write, t_json_char);
-        uint64_t ended = getTimestamp();
-        std::cout << "Sending finished in " << (ended - start) << "ms" << std::endl;
+    writeStringToPipe(fd_write, t_json_char);
+    uint64_t ended = getTimestamp();
+    std::cout << "Sending finished in " << (ended - start) << "ms" << std::endl;
 
-        char answer[512];
-        readStringFromPipe(answer, fd_read);
+    char answer[512];
+    readStringFromPipe(answer, fd_read);
 
-        std::cout << answer << std::endl;
-    }
+    std::cout << answer << std::endl;
 }
 
 void socketConnector::printDCS() {
@@ -78,25 +65,16 @@ void socketConnector::printDCS() {
 //    std::cout << pretty_json << std::endl;
 }
 
-//void socketConnector::setDc1(int value) {
-//    dc1 = value;
-//    std::cout << dc1 << std::endl;
-//
-//}
-//
-//void socketConnector::setDc2(int value) {
-//    dc2 = value;
-//}
-//
-//void socketConnector::setDc3(int value) {
-//    dc3 = value;
-//}
-//
-//void socketConnector::setDc4(int value) {
-//    dc4 = value;
-//}
+void socketConnector::openPipe() {
+    *myfifo_write = (char) "/tmp/greppel_out";
+    *myfifo_read  = (char) "/tmp/greppel_in";
 
+    mkfifo(myfifo_read, 0666);
+    mkfifo(myfifo_write, 0666);
 
+    fd_write = open(myfifo_write, O_WRONLY);
+    fd_read  = open(myfifo_read, O_RDONLY);
+}
 
 /***
  * Create a string indicating the hexadecimal representation of the given parameter LEN

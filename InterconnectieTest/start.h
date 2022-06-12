@@ -10,5 +10,7 @@
 #include "json_struct.h"
 #include "socketConnector.h"
 #include "randomValues.h"
+#include "telemetryPipe.h"
+#include "telemetrics.h"
 
 
