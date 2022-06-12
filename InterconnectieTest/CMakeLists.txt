@@ -3,4 +3,4 @@ project(socketConnector)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(start.cpp start.h randomValues.cpp randomValues.h socketConnector.cpp socketConnector.h)
+add_executable(randomValues.cpp randomValues.h socketConnector.cpp socketConnector.h start.cpp start.h)

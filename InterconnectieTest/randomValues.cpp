@@ -25,4 +25,5 @@ void randomValues::generate() {
     sc.dc2 = dc2;
     sc.dc3 = dc3;
     sc.dc4 = dc4;
+
 }

@@ -7,6 +7,17 @@ int socketConnector::dc2;
 int socketConnector::dc3;
 int socketConnector::dc4;
 
+typedef struct _telemetry {
+    int dc1;
+    int dc2;
+    int dc3;
+    int dc4;
+
+    JS_OBJ(dc1, dc2, dc3, dc4);
+} telemetry;
+
+telemetry t;
+
 socketConnector::socketConnector() {
 
     std::cout << "in sc" << std::endl;
@@ -17,83 +28,73 @@ socketConnector::socketConnector() {
     mkfifo(myfifo_read, 0666);
     mkfifo(myfifo_write, 0666);
 
+
+//
+//
+//        std::cout << " | dc1 " << dc1 << " | ";
+//        std::cout << "dc2 " << dc2 << " | ";
+//        std::cout << "dc3 " << dc3 << " | ";
+//        std::cout << "dc4 " << dc4 << " | " << std::endl;
+
+
+//    }
+}
+
+void socketConnector::sendState() {
     int fd_write = open(myfifo_write, O_WRONLY);
     int fd_read  = open(myfifo_read, O_RDONLY);
     std::cout << "na fifo en fd" << std::endl;
-
-
-//    for (;;) {
+    while (true) {
         char hexlen[8 + 1];
         size_t chars_read;
 
         uint64_t start = getTimestamp();
+        t.dc1 = dc1;
+        t.dc2 = dc2;
+        t.dc3 = dc3;
+        t.dc4 = dc4;
+        std::string t_json = JS::serializeStruct(t);
 
-        std::cout << " | dc1 " << dc1 << " | ";
-        std::cout << "dc2 " << dc2 << " | ";
-        std::cout << "dc3 " << dc3 << " | ";
-        std::cout << "dc4 " << dc4 << " | " << std::endl;
+        const char *t_json_char = t_json.c_str();
+//      std::cout << t_json_char << std::endl;
 
-//        std::string s = std::to_string(dc1);
-//        char const *pchar1 = s.c_str();  //use char const* as target type
-//        s = std::to_string(dc2);
-//        char const *pchar2 = s.c_str();  //use char const* as target type
-//        s = std::to_string(dc3);
-//        char const *pchar3 = s.c_str();  //use char const* as target type
-//        s = std::to_string(dc4);
-//        char const *pchar4 = s.c_str();  //use char const* as target type
-    writeIntToPipe(fd_write, dc1);
-    writeIntToPipe(fd_write, dc2);
-    writeIntToPipe(fd_write, dc3);
-    writeIntToPipe(fd_write, dc4);
-
-
-//        writeStringToPipe(fd_write, pchar1);
-//        writeStringToPipe(fd_write, pchar2);
-//        writeStringToPipe(fd_write, pchar3);
-//        writeStringToPipe(fd_write, pchar4);
-
-//        writeStringToPipe(fd_write, MyCommand.filename);
-//        writeStringToPipe(fd_write, MyCommand.randomString);
-//        std::string str = std::to_string(i);
-//        char const *pchar = str.c_str();
-//        writeStringToPipe(fd_write, pchar);
-
-
-
+        writeStringToPipe(fd_write, t_json_char);
         uint64_t ended = getTimestamp();
-//        std::cout << "Sending finished in " << (ended - start) << "ms" << std::endl;
+        std::cout << "Sending finished in " << (ended - start) << "ms" << std::endl;
 
-//        char answer[512];
-//        readStringFromPipe(answer, fd_read);
-//
-//        std::cout << answer << std::endl;
-//    }
+        char answer[512];
+        readStringFromPipe(answer, fd_read);
+
+        std::cout << answer << std::endl;
+    }
 }
 
 void socketConnector::printDCS() {
-    std::cout << " | dc1 " << dc1 << " | ";
-    std::cout << "dc2 " << dc2 << " | ";
-    std::cout << "dc3 " << dc3 << " | ";
-    std::cout << "dc4 " << dc4 << " | " << std::endl;
+    t.dc1 = dc1;
+    t.dc2 = dc2;
+    t.dc3 = dc3;
+    t.dc4 = dc4;
+    std::string pretty_json = JS::serializeStruct(t);
+//    std::cout << pretty_json << std::endl;
 }
 
-void socketConnector::setDc1(int value) {
-    dc1 = value;
-    std::cout << dc1 << std::endl;
-
-}
-
-void socketConnector::setDc2(int value) {
-    dc2 = value;
-}
-
-void socketConnector::setDc3(int value) {
-    dc3 = value;
-}
-
-void socketConnector::setDc4(int value) {
-    dc4 = value;
-}
+//void socketConnector::setDc1(int value) {
+//    dc1 = value;
+//    std::cout << dc1 << std::endl;
+//
+//}
+//
+//void socketConnector::setDc2(int value) {
+//    dc2 = value;
+//}
+//
+//void socketConnector::setDc3(int value) {
+//    dc3 = value;
+//}
+//
+//void socketConnector::setDc4(int value) {
+//    dc4 = value;
+//}
 
 
 
@@ -139,20 +140,6 @@ unsigned long int socketConnector::writeStringToPipe (int fd, const char* text){
     return len;
 }//writeStringToPipe
 
-unsigned long int socketConnector::writeIntToPipe (int fd, const int number){
-    std::string tmp = std::to_string(number);
-    char const *num_char = tmp.c_str();
-
-    char hexlen[PREFIX_LENGTH + 1];
-    unsigned long int len = strlen(num_char);
-
-    // first create the prefix in HEX-format: how many bytes will follow?
-    createLengthIndicator(hexlen, len);
-    write (fd, hexlen,PREFIX_LENGTH  );
-    write (fd, num_char, len);
-    return len;
-}//writeStringToPipe
-
 
 /**
  * Reads a length indicator (string in hexadecimal format)
@@ -160,10 +147,13 @@ unsigned long int socketConnector::writeIntToPipe (int fd, const int number){
  * @return the number converted to an unsigned long int
  */
 unsigned long int socketConnector::readLengthIndicatorFromPipe(int fd){
+
     char hexlen[PREFIX_LENGTH + 1];
 
     read(fd, hexlen, 8);
     hexlen[8]='\0';
+
+    std::cout << "hexlen " << hexlen << std::endl;
 
     return std::stoi(hexlen, 0,  16);
 

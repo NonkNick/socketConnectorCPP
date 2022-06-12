@@ -5,6 +5,7 @@
 #include <cstring>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "json_struct.h"
 #include <fstream>
 #include <chrono>
 
@@ -20,11 +21,13 @@ public:
     void setDc3(int value);
     void setDc4(int value);
     void printDCS();
+    void sendState();
 
 private:
-
-
-
+    char *myfifo_write;
+    char *myfifo_read;
+    int fd_write;
+    int fd_read;
 
     void createLengthIndicator(char *buffer, unsigned long int len);
     uint64_t getTimestamp();

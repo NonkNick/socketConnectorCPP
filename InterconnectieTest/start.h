@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <fstream>
 #include <chrono>
+#include "json_struct.h"
 #include "socketConnector.h"
 #include "randomValues.h"
 

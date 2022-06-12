@@ -12,7 +12,9 @@ int main() {
 
     while(true) {
         rv.generate();
-        sc.printDCS();
+//        sc.printDCS();
+        sc.sendState();
+//        std::cout << "dsfbhjksdfjkdsajknfas" << std::endl;
     }
 
     return 0;

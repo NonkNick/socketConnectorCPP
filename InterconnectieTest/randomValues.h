@@ -6,8 +6,10 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <fstream>
+#include "json_struct.h"
 #include <chrono>
 #include "socketConnector.h"
+
 
 class randomValues {
     socketConnector sc;
