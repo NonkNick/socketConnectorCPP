@@ -14,34 +14,28 @@
 telemetryPipe::telemetryPipe() {
     mkfifo(myfifo_read, 0666);
     mkfifo(myfifo_write, 0666);
+    memset (fdtab, 0, sizeof(fdtab));
 }
 
 void telemetryPipe:: sendState() {
-
-    int fd_write = open(myfifo_write, O_WRONLY);
-    int fd_read  = open(myfifo_read, O_RDONLY);
-
-
     telemetrics* tel = telemetrics::getInstance();
     std::string t_json = JS::serializeStruct((*tel).telemetry, JS::SerializerOptions(JS::SerializerOptions::Compact));
     const char *t_json_char = t_json.c_str();
     char hexlen[8 + 1];
     size_t chars_read;
     uint64_t start = getTimestamp();
+
+    std::cout << "write integer " << fcntl(fd_write, F_GETFD) << std::endl;
     writeStringToPipe(fd_write, t_json_char);
+
     uint64_t ended = getTimestamp();
     std::cout << "Sending finished in " << (ended - start) << "ms" << std::endl;
 
     char answer[512];
+    std::cout << "read integer " << fcntl(fd_read, F_GETFD) << std::endl;
     readStringFromPipe(answer, fd_read);
+
     std::cout << answer << std::endl;
-
-//    fflush(fd_write);
-//    fflush(fd_read);
-//
-//    fd_write = close(myfifo_write, 1);
-//    fd_read = close(myfifo_read, 1);
-
 }
 
 void telemetryPipe::printDCS() {
@@ -143,25 +137,30 @@ unsigned long int telemetryPipe::readLengthIndicatorFromPipe(int fd){
     hexlen[8]='\0';
     std::cout << "hexlen " << hexlen << " -------------" << std::endl;
 
-    try {
+//    try {
         return std::stoi(hexlen, 0,  16);
-    }
-
-    catch (const std::invalid_argument& ia) {
-        std::cerr << "Invalid argument: " << ia.what() << std::endl;
-        std::cout << "-1 -------------" << std::endl;
-    }
-
-    catch (const std::out_of_range& oor) {
-        //std::cerr << "Out of Range error: " << oor.what() << std::endl;
-        std::cout << "-2 -------------" << std::endl;
-    }
-
-    catch (const std::exception& e)
-    {
-        //std::cerr << "Undefined error: " << e.what() << std::endl;
-        std::cout << "0 -------------" << std::endl;
-    }
+//    }
+//
+//    catch (const std::invalid_argument& ia) {
+//        std::cerr << "Invalid argument: " << ia.what() << std::endl;
+//        std::cout << "-1 -------------" << std::endl;
+//        throw std::exception();
+//    }
+//
+//    catch (const std::out_of_range& oor) {
+//        //std::cerr << "Out of Range error: " << oor.what() << std::endl;
+//        std::cout << "-2 -------------" << std::endl;
+//        throw std::exception();
+//
+//    }
+//
+//    catch (const std::exception& e)
+//    {
+//        //std::cerr << "Undefined error: " << e.what() << std::endl;
+//        std::cout << "0 -------------" << std::endl;
+//        throw std::exception();
+//
+//    }
 
 
 }//readLengthIndicatorFromPipe

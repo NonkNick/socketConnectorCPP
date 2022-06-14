@@ -8,16 +8,13 @@
 #include <fstream>
 #include "json_struct.h"
 #include <chrono>
-#include "socketConnector.h"
 #include "telemetryPipe.h"
 #include "telemetrics.h"
 
 
 class randomValues {
     int dc1;
-    int dc2;
-    int dc3;
-    int dc4;
+
 
 
 public:
